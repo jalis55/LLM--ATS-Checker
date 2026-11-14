@@ -76,6 +76,59 @@ Open the local URL printed by Streamlit, usually `http://localhost:8501`.
 
 PDFs must contain selectable text. Scanned or image-only documents require OCR before uploading. Unlock password-protected PDFs before use.
 
+### Run with Docker
+
+Install Docker with the Compose plugin, then create your local configuration:
+
+```bash
+cp .env.example .env
+# Edit .env and set your real GROQ_API_KEY.
+docker compose up --build -d --wait
+```
+
+Open `http://localhost:8501`. The port binds to localhost; set `PORT` in your
+shell or `.env` to use a different local port. The container runs as a non-root
+user and checks Streamlit's health endpoint. Secrets are passed at runtime and
+excluded from the image build context.
+
+```bash
+docker compose logs -f app
+docker compose down
+```
+
+## CI/CD
+
+The GitHub Actions workflow in `.github/workflows/ci-cd.yml` runs on pushes,
+pull requests, and manual dispatches. It installs dependencies from `uv.lock`,
+runs the unittest suite, validates Compose, builds the Docker image, and starts
+it to verify its health. Tests and the startup check require no real Groq key.
+
+After a successful push to the repository's default branch (currently `Main`),
+the workflow publishes the exact tested image to GitHub Container Registry:
+
+- `ghcr.io/jalis55/llm--ats-checker:latest`
+- `ghcr.io/jalis55/llm--ats-checker:sha-<full-commit-sha>`
+
+Publishing uses the built-in `GITHUB_TOKEN` with `packages: write`; no registry
+password needs to be added. Ensure GitHub Actions and package publishing are
+allowed in the repository settings. Other branches and pull requests never publish.
+This follows the [GitHub Container Registry publishing guide](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
+
+To run a published image on a Docker host, copy `compose.yaml` and your `.env`
+onto that host and run:
+
+```bash
+export ATS_IMAGE=ghcr.io/jalis55/llm--ats-checker:latest
+docker compose pull
+docker compose up -d --no-build --wait
+```
+
+For a private package, authenticate with `docker login ghcr.io` using a token
+with `read:packages` permission before pulling. Use a `sha-...` tag for a fixed
+release or rollback. Images are delivered automatically; server deployment is
+manual until a hosting target is configured. For public access, put a reverse
+proxy with HTTPS in front of the localhost port.
+
 ## How scoring works
 
 The app extracts skills from both documents in parallel, then makes a separate AI request to compare the skill lists.

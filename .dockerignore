@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!ats_checker.py
+!models/
+!models/*.py
+!prompts/
+!prompts/*.py
+!services/
+!services/*.py
+!utils/
+!utils/*.py
